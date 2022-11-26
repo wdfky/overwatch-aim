@@ -41,11 +41,12 @@ class MouseThread(threading.Thread):
         self.deviceId = deviceId
         self.stroke = ffi.new('InterceptionMouseStroke *')
         self.stroke.flags = INTERCEPTION_MOUSE_MOVE_RELATIVE | INTERCEPTION_MOUSE_CUSTOM
+        self.keystroke = ffi.new('InterceptionKeyStroke *')
         lib.interception_set_filter(self.context, lib.interception_is_mouse, lib.INTERCEPTION_FILTER_MOUSE_MOVE)
         self.isInjected = False
         self.X = 0.0#缩放后的冗余值
         self.Y = 0.0
-        self.speed = 0
+        self.speed = 0.0
         self.aimmode = aimmode #吸附模式
     def run(self):
         while True and not self.isInjected:
@@ -53,35 +54,33 @@ class MouseThread(threading.Thread):
             device = lib.interception_wait(self.context)
             if not lib.interception_receive(self.context, device, self.emptyStroke, 1):
                 break
-            if self.aimmode == 4 and self.speed != 0:
-                movex, movey = self.emptyStroke.x, self.emptyStroke.y
-                self.emptyStroke.x = int(self.emptyStroke.x*self.speed + self.X)
-                self.emptyStroke.y = int(self.emptyStroke.y*self.speed + self.Y)
-                self.X = self.X + movex - self.emptyStroke.x
-                self.Y = self.Y + movey - self.emptyStroke.y
+            if self.aimmode == 4 and self.speed != 0.0:
+                movex, movey = self.emptyStroke.x*self.speed, self.emptyStroke.y*self.speed
+                self.emptyStroke.x = int(movex + self.X)
+                self.emptyStroke.y = int(movey+ self.Y)
+                self.X = self.X + movex - int(self.emptyStroke.x)
+                self.Y = self.Y + movey - int(self.emptyStroke.y)
             lib.interception_send(self.context, device, self.emptyStroke, 1)
         lib.interception_destroy_context(self.context)
     def move(self, x, y):
         self.stroke.x = x
         self.stroke.y = y
-        print("move", x, y)
         lib.interception_send(self.context, self.deviceId, self.stroke, 1)
         
     def click(self):
-        self.stroke.x = 0
-        self.stroke.y = 0
-        self.stroke.code = INTERCEPTION_MOUSE_LEFT_BUTTON_DOWN
-        lib.interception_send(self.context, self.deviceId, self.stroke, 1)
+        self.state= 0
+        self.keystroke.code = INTERCEPTION_MOUSE_LEFT_BUTTON_DOWN
+        lib.interception_send(self.context, self.deviceId, self.keystroke, 1)
         time.sleep(0.3)
-        self.stroke.code = INTERCEPTION_MOUSE_LEFT_BUTTON_UP
-        lib.interception_send(self.context, self.deviceId, self.stroke, 1)
+        self.keystroke.code = INTERCEPTION_MOUSE_LEFT_BUTTON_UP
+        lib.interception_send(self.context, self.deviceId, self.keystroke, 1)
         
     def setSpeed(self, speed):
         self.speed = speed
     def resetSpeed(self):
-        self.speed = 0
-        self.X = 0
-        self.Y = 0
+        self.speed = 0.0
+        self.X = 0.0
+        self.Y = 0.0
     def stop(self):
         print("stop")
         self.isInjected = True

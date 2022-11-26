@@ -16,20 +16,22 @@ SQUARE_SIZE = 600
 viz.SQUARE_SIZE = SQUARE_SIZE
 
 # 瞄准模式，0为默认左键，1为右键， 2为左右键， 3为自动开枪，4是摁住左键吸附瞄准
-aim_mode = 0
+aim_mode = 4
 aim_jitter_percent=0
 # 游戏灵敏度
 sensitivity=10.0
 # 每次最多移动多少像素,锁死可能需要10+
-aim_max_move_pixels=10
+aim_max_move_pixels=3
 
 # 自动涉及模式的误差，太小了会导致不会开火
-flick_shoot_pixels=5
+flick_shoot_pixels=2
 # 开枪休息时间 (200 for 麦克雷, 350 for 艾什, 270 for 百合)
-flick_pause_duration=200
+flick_pause_duration=210
 
 # 吸附模式范围
-flick_range=10
+flick_range=4
+# 吸附模式速度减到多少
+flick_speed = 0.2
 
 # The maximum possible pixel distance that a character's center
 # can be before locking onto them
@@ -63,6 +65,8 @@ def is_activated(aim_mod: int):
     if aim_mod == 1:
         return win32api.GetAsyncKeyState(win32con.VK_RBUTTON)
     if aim_mod == 2:
+        return win32api.GetAsyncKeyState(win32con.VK_LBUTTON) or win32api.GetAsyncKeyState(win32con.VK_RBUTTON)
+    if aim_mod == 4:
         return win32api.GetAsyncKeyState(win32con.VK_LBUTTON) or win32api.GetAsyncKeyState(win32con.VK_RBUTTON)
     return False
     # return win32api.GetAsyncKeyState(0x14) != 0
@@ -119,15 +123,19 @@ while True:
         # 自动开火模式
         last_time = time.perf_counter()
         if aim_mode == 3:
-            if moveX < flick_shoot_pixels and moveY < flick_shoot_pixels:
+            if abs(moveX) < flick_shoot_pixels and abs(moveY) < flick_shoot_pixels:
                 mouse.click()
                 time.sleep(flick_pause_duration/1000.0)
         # 吸附模式
-        elif aim_mode == 4 and not isSlow:
+        elif aim_mode == 4 and not isSlow and is_activated(aim_mode):
             if moveX < flick_range and moveY < flick_range :
                 isSlow = True
-                mouse.setSpeed(0.1)
-        elif is_activated(aim_mode):
+                mouse.setSpeed(flick_speed)
+        elif aim_mode == 4 and isSlow and not is_activated(aim_mode):
+            isSlow = False
+            mouse.resetSpeed()
+        # 吸附模式不要自瞄
+        elif aim_mode != 4 and is_activated(aim_mode):
             mouse.move(min(int(moveX), aim_max_move_pixels), min(int(moveY), aim_max_move_pixels))
     else:
         if isSlow:
