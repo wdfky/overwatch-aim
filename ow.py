@@ -7,6 +7,7 @@ import  win32con, win32api
 import lib.viz as viz
 import time
 import random
+import dxcam
 if __debug__:
     cv2.namedWindow('res', cv2.WINDOW_NORMAL)
 
@@ -14,7 +15,8 @@ if __debug__:
 # i.e. SQUARE_SIZE of 600 => 600 x 600px
 SQUARE_SIZE = 600
 viz.SQUARE_SIZE = SQUARE_SIZE
-
+# 截图模式，0兼容性最好速度一般，1兼容性待测试速度很快
+screenmode = 0
 # 瞄准模式，0为默认左键，1为右键， 2为左右键， 3为自动开枪，4是摁住左键吸附瞄准
 aim_mode = 4
 aim_jitter_percent=0
@@ -46,6 +48,12 @@ sct = mss()
 # Use the first monitor, change to desired monitor number
 dimensions = sct.monitors[1]
 
+# 影响模式1截图的fps
+target_fps = 120
+left, top = (dimensions['width'] - SQUARE_SIZE) // 2, (dimensions['height'] - SQUARE_SIZE) // 2
+right, bottom = left + SQUARE_SIZE, top + SQUARE_SIZE
+region = (left, top, right, bottom)
+print(region)
 # Compute the center square of the screen to parse
 dimensions['left'] = int((dimensions['width'] / 2) - (SQUARE_SIZE / 2))
 dimensions['top'] = int((dimensions['height'] / 2) - (SQUARE_SIZE / 2))
@@ -53,6 +61,11 @@ dimensions['width'] = SQUARE_SIZE
 dimensions['height'] = SQUARE_SIZE
 
 
+
+camera = None
+if screenmode == 1:
+    camera = dxcam.create(output_idx=0, output_color="BGR")
+    camera.start(target_fps=target_fps, video_mode=True,region=region)
 # Calls the Windows API to simulate mouse movement events that are sent to OW
 def mouse_move(x, y):
     win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, x, y, 0, 0)
@@ -110,8 +123,11 @@ mouse.start()
 isSlow = False
 # Main lifecycle
 while True:
-
-    frame = np.asarray(sct.grab(dimensions))
+    frame = None
+    if screenmode == 1:
+        frame = camera.get_latest_frame()
+    else:
+        frame = np.asarray(sct.grab(dimensions))
     contours = viz.process(frame)
     # For now, just attempt to lock on to the largest contour match
     if len(contours) > 1:
@@ -153,3 +169,5 @@ while True:
 mouse.stop()
 sct.close()
 cv2.destroyAllWindows()
+if screenmode == 1:
+    camera.stop()
