@@ -89,7 +89,8 @@ def locate_target(target):
     moment = cv2.moments(target)
     if moment["m00"] == 0:
         return
-
+    # m_ji = E(x,y)(array(x,y)*x^i*y^i)
+    # 总之cx,cy就是质心
     cx = int(moment["m10"] / moment["m00"])
     cy = int(moment["m01"] / moment["m00"])
 
@@ -97,14 +98,14 @@ def locate_target(target):
     x = -(mid - cx) if cx < mid else cx - mid
     y = -(mid - cy) if cy < mid else cy - mid
 
-    target_size = cv2.contourArea(target)
-    distance = sqrt(pow(x, 2) + pow(y, 2))
+    # target_size = cv2.contourArea(target)
+    # distance = sqrt(pow(x, 2) + pow(y, 2))
 
-    # There's definitely some sweet spot to be found here
-    # for the sensitivity in regards to the target's size
-    # and distance
-    slope = ((1.0 / 3.0) - 1.0) / (MAX_TARGET_DISTANCE / target_size)
-    multiplier = ((MAX_TARGET_DISTANCE - distance) / target_size) * slope + 1
+    # # There's definitely some sweet spot to be found here
+    # # for the sensitivity in regards to the target's size
+    # # and distance
+    # slope = ((1.0 / 3.0) - 1.0) / (MAX_TARGET_DISTANCE / target_size)
+    # multiplier = ((MAX_TARGET_DISTANCE - distance) / target_size) * slope + 1
 
 
     # moveSmooth(int(x * multiplier), int(y * multiplier), AimSpeed)
@@ -114,7 +115,7 @@ def locate_target(target):
         cv2.drawContours(frame, [target], -1, (0, 255, 0), 2)
         # draw a small white circle at their center of mass
         cv2.circle(frame, (cx, cy), 7, (255, 255, 255), -1)
-    return int(x * multiplier), int(y * multiplier)
+    return int(x), int(y)
 
     
 mouse = MouseThread(12, aim_mode)
